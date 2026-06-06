@@ -73,7 +73,9 @@ docs: 文档/流程更新
 
 - **main = 已发布内容，只读**
 - 永远不直接在 main 上修改
-- 所有更改通过 feature 分支 → PR → squash merge
+- 所有更改通过 feature 分支 → 推送 → Andrew 审阅 → **Andrew 确认后合并**
+- 分支合并由 Andrew 执行，小龙女不主动合并到 main
+- 合并完成后，小龙女删除 feature 分支
 
 ---
 
