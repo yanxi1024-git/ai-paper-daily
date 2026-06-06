@@ -1,3 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>你的 AI 真的靠谱吗？有人用混沌工程给它做了次压力测试</title>
+<style>
+body { font-family: -apple-system,"PingFang SC","Microsoft YaHei",sans-serif; max-width:680px; margin:0 auto; padding:20px; }
+.toolbar { position:sticky; top:0; background:#fff; padding:12px 0; border-bottom:1px solid #eee; margin-bottom:20px; z-index:10; }
+.btn { display:inline-block; padding:10px 24px; background:#2c3e50; color:#fff; border:none; border-radius:6px; font-size:15px; cursor:pointer; margin-right:10px; }
+.btn:hover { background:#3498db; }
+.msg { display:inline-block; margin-left:12px; font-size:14px; color:#27ae60; opacity:0; transition:opacity 0.3s; }
+.msg.show { opacity:1; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button class="btn" onclick="copyToWechat()">📋 一键复制到公众号</button>
+  <span class="msg" id="msg">✅ 已复制！去公众号后台 Ctrl+V 粘贴</span>
+</div>
+<div id="content">
 <h1 style="font-size:22px;font-weight:bold;color:#2c3e50;text-align:center;margin:20px 0 15px;line-height:1.4;">你的 AI 真的靠谱吗？有人用混沌工程给它做了次压力测试</h1>
 <blockquote style="font-size:14px;color:#666;line-height:1.8;margin:12px 0;padding:10px 16px;background:#f8f9fa;border-left:3px solid #3498db;border-radius:0 4px 4px 0;">我们经常说某个模型"很强"、某个 demo "跑通了"，但很少认真问一句：把它扔到真实世界的乱糟糟的环境里，到底有多可靠？由 Aayush Gupta 等人的 "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions" 这篇论文给了一个让人有点不安的答案。</blockquote>
 <p style="text-align:center;color:#ccc;margin:20px 0;font-size:14px;letter-spacing:8px;">· · ·</p>
@@ -20,12 +41,30 @@
 <tr><td style="border-bottom:1px solid #e0e0e0;padding:8px 12px;color:#333;">复杂架构压力下反而更脆</td><td style="border-bottom:1px solid #e0e0e0;padding:8px 12px;color:#333;">带反思的 Reflexion 打不过简单的 ReAct</td></tr>
 <tr><td style="border-bottom:1px solid #e0e0e0;padding:8px 12px;color:#333;">最贵的不一定最可靠</td><td style="border-bottom:1px solid #e0e0e0;padding:8px 12px;color:#333;">GPT-4o 成本是 Gemini Flash 的 82 倍，可靠性只差 -0.6%</td></tr>
 </table>
+<p style="font-size:15px;color:#333;line-height:1.85;margin:10px 0;letter-spacing:0.5px;">他们测了 Gemini 2.0 Flash 和 GPT-4o，两种架构（简单的 ReAct 和带自我反思的 Reflexion），四个领域（日程、旅行、客服、电商），总共 1280 个测试 episode。</p>
 <p style="font-size:15px;color:#333;line-height:1.85;margin:10px 0;letter-spacing:0.5px;">最后一个数据我看完真的愣了一下——82 倍的价差，靠谱程度几乎一样。</p>
 <h2 style="font-size:18px;font-weight:bold;color:#2c3e50;margin:24px 0 12px;padding-left:12px;border-left:4px solid #3498db;line-height:1.5;">💡 读后感和碎碎念</h2>
 <p style="font-size:15px;color:#333;line-height:1.85;margin:10px 0;letter-spacing:0.5px;">复杂不等于可靠。 Reflexion 加了自我反思，听起来应该更稳。但在故障场景下，多出来的推理步骤本身就成了新的脆弱点。这个反直觉的结果让我怀疑：我们是不是在一些地方把系统搞得太"花哨"了？</p>
 <p style="font-size:15px;color:#333;line-height:1.85;margin:10px 0;letter-spacing:0.5px;">按 benchmark 排名选模型可能是个很贵的习惯。 82 倍的成本差异摆在那，但 benchmark 分数看不出这个。不是说便宜的就一定好，但至少提醒我们：只看性能分选模型，有点像只看百公里加速买车。</p>
 <p style="font-size:15px;color:#333;line-height:1.85;margin:10px 0;letter-spacing:0.5px;">评测思维的一次有意思的跨界。 之前大家评测 AI 像评测一个函数——输入→输出→对不对。这篇论文把它变成了像评测一个在线服务——能不能扛压、能不能容错、能不能保持一致性。这个视角切换本身就很值得关注。</p>
 <p style="text-align:center;color:#ccc;margin:20px 0;font-size:14px;letter-spacing:8px;">· · ·</p>
-<p style="font-size:13px;color:#999;line-height:1.6;margin:20px 0 10px;padding:10px;background:#f5f5f5;border-radius:4px;">📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:2601.06112, Jan 2026.
-完整分析 & 论文原文：github.com/yanxi1024-git/ai-paper-daily</p>
+<p style="font-size:13px;color:#999;line-height:1.6;margin:20px 0 10px;padding:10px;background:#f5f5f5;border-radius:4px;">📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:2601.06112, Jan 2026.<br>完整分析 & 论文原文：github.com/yanxi1024-git/ai-paper-daily</p>
 <p style="font-size:15px;color:#333;line-height:1.85;margin:10px 0;letter-spacing:0.5px;"><span style="color:#3498db;">#和Andrew一起读论文</span>  <span style="color:#999;">#AI论文解读</span>  <span style="color:#999;">#AI可靠性</span></p>
+</div>
+<script>
+function copyToWechat() {
+  const content = document.getElementById('content');
+  const range = document.createRange();
+  range.selectNodeContents(content);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  document.execCommand('copy');
+  sel.removeAllRanges();
+  const msg = document.getElementById('msg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

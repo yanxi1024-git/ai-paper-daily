@@ -237,11 +237,9 @@ def to_moltbook(data):
 
 def to_wechat(data):
     """生成公众号内联样式 HTML — 可直接粘贴到公众号后台"""
-    # 公众号标准样式
     css = {
         'h1': 'font-size:22px;font-weight:bold;color:#2c3e50;text-align:center;margin:20px 0 15px;line-height:1.4;',
         'h2': 'font-size:18px;font-weight:bold;color:#2c3e50;margin:24px 0 12px;padding-left:12px;border-left:4px solid #3498db;line-height:1.5;',
-        'h3': 'font-size:16px;font-weight:bold;color:#34495e;margin:18px 0 8px;line-height:1.5;',
         'p': 'font-size:15px;color:#333;line-height:1.85;margin:10px 0;letter-spacing:0.5px;',
         'quote': 'font-size:14px;color:#666;line-height:1.8;margin:12px 0;padding:10px 16px;background:#f8f9fa;border-left:3px solid #3498db;border-radius:0 4px 4px 0;',
         'list': 'font-size:15px;color:#333;line-height:1.85;margin:6px 0;',
@@ -258,97 +256,113 @@ def to_wechat(data):
     def p(text):
         return tag('p', 'p', text) if text.strip() else ''
 
-    h = []
+    body = []
 
-    # 标题
-    h.append(tag('h1', 'h1', data['title']))
+    body.append(tag('h1', 'h1', data['title']))
 
-    # 亮点
     oneliner = clean_md(data['oneliner'])
     oneliner = re.sub(r'^.{0,6}亮点[：:]\s*', '', oneliner)
-    h.append(tag('blockquote', 'quote', oneliner))
+    body.append(tag('blockquote', 'quote', oneliner))
+    body.append(tag('p', 'divider', '· · ·'))
 
-    # 分隔线
-    h.append(tag('p', 'divider', '· · ·'))
-
-    # 问题
-    h.append(tag('h2', 'h2', '🎯 我们在问什么问题'))
+    body.append(tag('h2', 'h2', '🎯 我们在问什么问题'))
     for line in data['problem'].strip().split('\n'):
         line = line.strip()
         if not line:
             continue
         line = clean_md(line)
-        if line.startswith('- ') or line.startswith('* '):
-            h.append(tag('p', 'list', '  ' + line))
-        else:
-            h.append(p(line))
+        body.append(p(line))
 
-    # 方法
-    h.append(tag('h2', 'h2', '🔬 方法概要'))
+    body.append(tag('h2', 'h2', '🔬 方法概要'))
     for line in data['method'].strip().split('\n'):
         line = line.strip()
         if not line:
             continue
         line = clean_md(line)
         if line.startswith('- ') or line.startswith('* '):
-            h.append(tag('p', 'list', '  ' + line))
+            body.append(tag('p', 'list', '  ' + line))
         else:
-            h.append(p(line))
+            body.append(p(line))
 
-    # 关键结果
-    h.append(tag('h2', 'h2', '📊 关键数据'))
-    # 表格转 HTML
+    body.append(tag('h2', 'h2', '📊 关键数据'))
     results = data['results']
     table_rows = re.findall(r'\|\s*(.+?)\s*\|\s*(.+?)\s*\|', results)
     if table_rows:
         data_rows = [r for r in table_rows if not re.match(r'[-:\s|]+', r[0]) and '发现' not in r[0]]
-        h.append(f'<table style="{css["table"]}">')
-        h.append(f'<tr><th style="{css["th"]}">发现</th><th style="{css["th"]}">数据</th></tr>')
+        body.append(f'<table style="{css["table"]}">')
+        body.append(f'<tr><th style="{css["th"]}">发现</th><th style="{css["th"]}">数据</th></tr>')
         for desc, val in data_rows:
-            h.append(f'<tr><td style="{css["td"]}">{desc.strip()}</td><td style="{css["td"]}">{val.strip()}</td></tr>')
-        h.append('</table>')
-    # 表格后的文本
-    post_table = re.split(r'\|[-|\s]+\|[\s\S]*?(?=\n\n|\n$)', results, maxsplit=1)
-    if len(post_table) > 1:
-        remaining = post_table[-1].strip()
-        for line in remaining.split('\n'):
-            line = clean_md(line.strip())
-            if line:
-                h.append(p(line))
-    else:
-        for line in results.strip().split('\n'):
-            if '|' in line:
-                continue
-            line = clean_md(line.strip())
-            if line:
-                h.append(p(line))
+            body.append(f'<tr><td style="{css["td"]}">{desc.strip()}</td><td style="{css["td"]}">{val.strip()}</td></tr>')
+        body.append('</table>')
+    for line in results.strip().split('\n'):
+        if '|' in line and '-' in line:
+            continue
+        line = clean_md(line.strip())
+        if line and '|' not in line:
+            body.append(p(line))
 
-    # 洞察
-    h.append(tag('h2', 'h2', '💡 读后感和碎碎念'))
+    body.append(tag('h2', 'h2', '💡 读后感和碎碎念'))
     for line in data['insight'].strip().split('\n'):
         line = line.strip()
         if not line:
             continue
         line = clean_md(line)
         if line.startswith('**') and '**' in line[2:]:
-            # 粗体小标题
             bold_end = line.index('**', 2)
             bold_text = line[2:bold_end]
             rest = line[bold_end+2:].strip()
-            h.append(tag('p', 'p', f'<strong style="color:#2c3e50;">{bold_text}</strong> {rest}'))
+            body.append(tag('p', 'p', f'<strong style="color:#2c3e50;">{bold_text}</strong> {rest}'))
         else:
-            h.append(p(line))
+            body.append(p(line))
 
-    # 分隔 + 参考文献
-    h.append(tag('p', 'divider', '· · ·'))
-    url = data.get('arxiv_url', '')
-    ref_text = f'📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:2601.06112, Jan 2026.\n完整分析 & 论文原文：github.com/yanxi1024-git/ai-paper-daily'
-    h.append(tag('p', 'ref', ref_text))
+    body.append(tag('p', 'divider', '· · ·'))
+    ref_text = f'📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:2601.06112, Jan 2026.<br>完整分析 & 论文原文：github.com/yanxi1024-git/ai-paper-daily'
+    body.append(tag('p', 'ref', ref_text))
+    body.append(tag('p', 'p', '<span style="color:#3498db;">#和Andrew一起读论文</span>  <span style="color:#999;">#AI论文解读</span>  <span style="color:#999;">#AI可靠性</span>'))
 
-    # 标签
-    h.append(tag('p', 'p', '<span style="color:#3498db;">#和Andrew一起读论文</span>  <span style="color:#999;">#AI论文解读</span>  <span style="color:#999;">#AI可靠性</span>'))
+    body_html = '\n'.join(body)
 
-    return '\n'.join(h)
+    # 包装成一个自包含页面，带一键复制按钮
+    return f'''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{data['title']}</title>
+<style>
+body {{ font-family: -apple-system,"PingFang SC","Microsoft YaHei",sans-serif; max-width:680px; margin:0 auto; padding:20px; }}
+.toolbar {{ position:sticky; top:0; background:#fff; padding:12px 0; border-bottom:1px solid #eee; margin-bottom:20px; z-index:10; }}
+.btn {{ display:inline-block; padding:10px 24px; background:#2c3e50; color:#fff; border:none; border-radius:6px; font-size:15px; cursor:pointer; margin-right:10px; }}
+.btn:hover {{ background:#3498db; }}
+.msg {{ display:inline-block; margin-left:12px; font-size:14px; color:#27ae60; opacity:0; transition:opacity 0.3s; }}
+.msg.show {{ opacity:1; }}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button class="btn" onclick="copyToWechat()">📋 一键复制到公众号</button>
+  <span class="msg" id="msg">✅ 已复制！去公众号后台 Ctrl+V 粘贴</span>
+</div>
+<div id="content">
+{body_html}
+</div>
+<script>
+function copyToWechat() {{
+  const content = document.getElementById('content');
+  const range = document.createRange();
+  range.selectNodeContents(content);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  document.execCommand('copy');
+  sel.removeAllRanges();
+  const msg = document.getElementById('msg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 3000);
+}}
+</script>
+</body>
+</html>'''
 
 
 # ── 主流程 ───────────────────────────────────────────────────
