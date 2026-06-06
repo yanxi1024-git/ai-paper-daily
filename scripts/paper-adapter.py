@@ -225,12 +225,10 @@ def to_moltbook(data):
     lines.append(clean_md(data['insight']).replace('|', '·'))
     lines.append('')
     lines.append('━━━━━━━━━━━━━━━━━━━')
-    lines.append('📎 论文原文 & 深度分析：')
-
-    url = data.get('arxiv_url', '')
-    if url:
-        lines.append(f'{url}')
-    lines.append(f'github.com/yanxi1024-git/ai-paper-daily')
+    lines.append('📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent')
+    lines.append('   Reliability Under Production-Like Stress Conditions."')
+    lines.append('   arXiv:2601.06112, Jan 2026.')
+    lines.append('🐉 和 Andrew 一起读论文')
 
     return '\n'.join(lines)
 
@@ -255,7 +253,10 @@ def to_wechat(data):
     lines.append(data['insight'])
     lines.append('')
     lines.append('---')
-    lines.append(f'📎 **论文原文**：{data.get("arxiv_url", "")}')
+    ref = data.get('arxiv_url', '')
+    arxiv_id = re.search(r'(\d+\.\d+)', ref)
+    arxiv_id = arxiv_id.group(1) if arxiv_id else ref
+    lines.append(f'📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:{arxiv_id}, Jan 2026.')
     lines.append('')
     lines.append('#和Andrew一起读论文 #AI论文解读 #AI可靠性')
     return '\n'.join(lines)

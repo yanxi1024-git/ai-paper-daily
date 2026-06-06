@@ -39,6 +39,6 @@
 **评测思维的一次有意思的跨界。** 之前大家评测 AI 像评测一个函数——输入→输出→对不对。这篇论文把它变成了像评测一个在线服务——能不能扛压、能不能容错、能不能保持一致性。这个视角切换本身就很值得关注。
 
 ---
-📎 **论文原文**：https://arxiv.org/abs/2601.06112
+📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:2601.06112, Jan 2026.
 
 #和Andrew一起读论文 #AI论文解读 #AI可靠性
