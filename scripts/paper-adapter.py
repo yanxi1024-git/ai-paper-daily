@@ -236,29 +236,119 @@ def to_moltbook(data):
 
 
 def to_wechat(data):
-    """生成微信公众号 HTML"""
-    # 简化版：生成结构化 Markdown，后续可由 wechat-editor 进一步处理
-    lines = []
-    lines.append(f"# {data['title']}")
-    lines.append('')
-    lines.append(f"> 📌 {data['oneliner']}")
-    lines.append('')
-    lines.append('## 🎯 解决了什么问题')
-    lines.append(data['problem'])
-    lines.append('')
-    lines.append('## 🔬 方法概要')
-    lines.append(data['method'])
-    lines.append('')
-    lines.append('## 📊 关键结果')
-    lines.append(data['results'])
-    lines.append('')
-    lines.append('## 💡 为什么值得关注')
-    lines.append(data['insight'])
-    lines.append('')
-    lines.append('---')
-    lines.append(f"📎 **论文原文**：{data.get('arxiv_url', '')}")
+    """生成公众号内联样式 HTML — 可直接粘贴到公众号后台"""
+    # 公众号标准样式
+    css = {
+        'h1': 'font-size:22px;font-weight:bold;color:#2c3e50;text-align:center;margin:20px 0 15px;line-height:1.4;',
+        'h2': 'font-size:18px;font-weight:bold;color:#2c3e50;margin:24px 0 12px;padding-left:12px;border-left:4px solid #3498db;line-height:1.5;',
+        'h3': 'font-size:16px;font-weight:bold;color:#34495e;margin:18px 0 8px;line-height:1.5;',
+        'p': 'font-size:15px;color:#333;line-height:1.85;margin:10px 0;letter-spacing:0.5px;',
+        'quote': 'font-size:14px;color:#666;line-height:1.8;margin:12px 0;padding:10px 16px;background:#f8f9fa;border-left:3px solid #3498db;border-radius:0 4px 4px 0;',
+        'list': 'font-size:15px;color:#333;line-height:1.85;margin:6px 0;',
+        'table': 'border-collapse:collapse;width:100%;margin:12px 0;font-size:14px;',
+        'th': 'background:#2c3e50;color:#fff;padding:8px 12px;text-align:left;font-weight:bold;',
+        'td': 'border-bottom:1px solid #e0e0e0;padding:8px 12px;color:#333;',
+        'ref': 'font-size:13px;color:#999;line-height:1.6;margin:20px 0 10px;padding:10px;background:#f5f5f5;border-radius:4px;',
+        'divider': 'text-align:center;color:#ccc;margin:20px 0;font-size:14px;letter-spacing:8px;',
+    }
 
-    return '\n'.join(lines)
+    def tag(t, style_key, text):
+        return f'<{t} style="{css[style_key]}">{text}</{t}>'
+
+    def p(text):
+        return tag('p', 'p', text) if text.strip() else ''
+
+    h = []
+
+    # 标题
+    h.append(tag('h1', 'h1', data['title']))
+
+    # 亮点
+    oneliner = clean_md(data['oneliner'])
+    oneliner = re.sub(r'^.{0,6}亮点[：:]\s*', '', oneliner)
+    h.append(tag('blockquote', 'quote', oneliner))
+
+    # 分隔线
+    h.append(tag('p', 'divider', '· · ·'))
+
+    # 问题
+    h.append(tag('h2', 'h2', '🎯 我们在问什么问题'))
+    for line in data['problem'].strip().split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+        line = clean_md(line)
+        if line.startswith('- ') or line.startswith('* '):
+            h.append(tag('p', 'list', '  ' + line))
+        else:
+            h.append(p(line))
+
+    # 方法
+    h.append(tag('h2', 'h2', '🔬 方法概要'))
+    for line in data['method'].strip().split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+        line = clean_md(line)
+        if line.startswith('- ') or line.startswith('* '):
+            h.append(tag('p', 'list', '  ' + line))
+        else:
+            h.append(p(line))
+
+    # 关键结果
+    h.append(tag('h2', 'h2', '📊 关键数据'))
+    # 表格转 HTML
+    results = data['results']
+    table_rows = re.findall(r'\|\s*(.+?)\s*\|\s*(.+?)\s*\|', results)
+    if table_rows:
+        data_rows = [r for r in table_rows if not re.match(r'[-:\s|]+', r[0]) and '发现' not in r[0]]
+        h.append(f'<table style="{css["table"]}">')
+        h.append(f'<tr><th style="{css["th"]}">发现</th><th style="{css["th"]}">数据</th></tr>')
+        for desc, val in data_rows:
+            h.append(f'<tr><td style="{css["td"]}">{desc.strip()}</td><td style="{css["td"]}">{val.strip()}</td></tr>')
+        h.append('</table>')
+    # 表格后的文本
+    post_table = re.split(r'\|[-|\s]+\|[\s\S]*?(?=\n\n|\n$)', results, maxsplit=1)
+    if len(post_table) > 1:
+        remaining = post_table[-1].strip()
+        for line in remaining.split('\n'):
+            line = clean_md(line.strip())
+            if line:
+                h.append(p(line))
+    else:
+        for line in results.strip().split('\n'):
+            if '|' in line:
+                continue
+            line = clean_md(line.strip())
+            if line:
+                h.append(p(line))
+
+    # 洞察
+    h.append(tag('h2', 'h2', '💡 读后感和碎碎念'))
+    for line in data['insight'].strip().split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+        line = clean_md(line)
+        if line.startswith('**') and '**' in line[2:]:
+            # 粗体小标题
+            bold_end = line.index('**', 2)
+            bold_text = line[2:bold_end]
+            rest = line[bold_end+2:].strip()
+            h.append(tag('p', 'p', f'<strong style="color:#2c3e50;">{bold_text}</strong> {rest}'))
+        else:
+            h.append(p(line))
+
+    # 分隔 + 参考文献
+    h.append(tag('p', 'divider', '· · ·'))
+    url = data.get('arxiv_url', '')
+    ref_text = f'📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:2601.06112, Jan 2026.\n完整分析 & 论文原文：github.com/yanxi1024-git/ai-paper-daily'
+    h.append(tag('p', 'ref', ref_text))
+
+    # 标签
+    h.append(tag('p', 'p', '<span style="color:#3498db;">#和Andrew一起读论文</span>  <span style="color:#999;">#AI论文解读</span>  <span style="color:#999;">#AI可靠性</span>'))
+
+    return '\n'.join(h)
 
 
 # ── 主流程 ───────────────────────────────────────────────────
@@ -290,12 +380,12 @@ def main():
     # 写入文件
     (x_dir / f'{stem}.txt').write_text(x_content)
     (mol_dir / f'{stem}.txt').write_text(mol_content)
-    (wc_dir / f'{stem}.md').write_text(wc_content)
+    (wc_dir / f'{stem}.html').write_text(wc_content)
 
     print(f"✅ 已生成多平台版本：")
     print(f"   X 长文:      output/x/{stem}.txt")
     print(f"   Moltbook:    output/moltbook/{stem}.txt")
-    print(f"   公众号:       output/wechat/{stem}.md")
+    print(f"   公众号:       output/wechat/{stem}.html")
 
 
 if __name__ == '__main__':
