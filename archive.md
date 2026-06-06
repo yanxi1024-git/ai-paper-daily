@@ -18,11 +18,23 @@
 ### Agent 架构 & 设计
 （待添加）
 
+### LLM 推理 & 规划
+（待添加）
+
+### 多模态 & 视觉语言
+（待添加）
+
+### AI 安全 & 对齐
+（待添加）
+
+### AI 基础设施 & 训练
+（待添加）
+
 ### Multi-Agent 系统
 （待添加）
 
-### AI + Web3 / Agent Economy
+### AI + Web3 / 去中心化 AI
 （待添加）
 
-### Prompt Engineering & Design
+### Prompt Engineering & AI Native 应用
 （待添加）
