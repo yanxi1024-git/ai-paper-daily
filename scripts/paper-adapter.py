@@ -434,8 +434,12 @@ def main():
     (x_dir / f'{stem}.txt').write_text(x_content)
     (mol_dir / f'{stem}.txt').write_text(mol_content)
     (wc_dir / f'{stem}.md').write_text(wc_md)
+
+    # .docx 用 pandoc 一行生成，公众号官方导入格式
+    import subprocess
     docx_path = str(wc_dir / f'{stem}.docx')
-    to_wechat_docx(data, docx_path)
+    subprocess.run(['pandoc', str(wc_dir / f'{stem}.md'), '-o', docx_path, '--from', 'markdown', '--to', 'docx'],
+                   check=True, capture_output=True)
 
     print(f"✅ 已生成多平台版本：")
     print(f"   X 长文:      output/x/{stem}.txt")
