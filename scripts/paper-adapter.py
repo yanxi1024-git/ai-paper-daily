@@ -236,133 +236,173 @@ def to_moltbook(data):
 
 
 def to_wechat(data):
-    """生成公众号内联样式 HTML — 可直接粘贴到公众号后台"""
-    css = {
-        'h1': 'font-size:22px;font-weight:bold;color:#2c3e50;text-align:center;margin:20px 0 15px;line-height:1.4;',
-        'h2': 'font-size:18px;font-weight:bold;color:#2c3e50;margin:24px 0 12px;padding-left:12px;border-left:4px solid #3498db;line-height:1.5;',
-        'p': 'font-size:15px;color:#333;line-height:1.85;margin:10px 0;letter-spacing:0.5px;',
-        'quote': 'font-size:14px;color:#666;line-height:1.8;margin:12px 0;padding:10px 16px;background:#f8f9fa;border-left:3px solid #3498db;border-radius:0 4px 4px 0;',
-        'list': 'font-size:15px;color:#333;line-height:1.85;margin:6px 0;',
-        'table': 'border-collapse:collapse;width:100%;margin:12px 0;font-size:14px;',
-        'th': 'background:#2c3e50;color:#fff;padding:8px 12px;text-align:left;font-weight:bold;',
-        'td': 'border-bottom:1px solid #e0e0e0;padding:8px 12px;color:#333;',
-        'ref': 'font-size:13px;color:#999;line-height:1.6;margin:20px 0 10px;padding:10px;background:#f5f5f5;border-radius:4px;',
-        'divider': 'text-align:center;color:#ccc;margin:20px 0;font-size:14px;letter-spacing:8px;',
-    }
+    """生成公众号 Markdown（配合 mdnice.com 或 pandoc→docx 使用）"""
+    lines = []
+    lines.append(f"# {data['title']}")
+    lines.append('')
+    lines.append(f"> 📌 {data['oneliner']}")
+    lines.append('')
+    lines.append('## 🎯 我们在问什么问题')
+    lines.append(data['problem'])
+    lines.append('')
+    lines.append('## 🔬 方法概要')
+    lines.append(data['method'])
+    lines.append('')
+    lines.append('## 📊 关键数据')
+    lines.append(data['results'])
+    lines.append('')
+    lines.append('## 💡 读后感和碎碎念')
+    lines.append(data['insight'])
+    lines.append('')
+    lines.append('---')
+    lines.append(f'📎 **论文原文**：{data.get("arxiv_url", "")}')
+    lines.append('')
+    lines.append('#和Andrew一起读论文 #AI论文解读 #AI可靠性')
+    return '\n'.join(lines)
 
-    def tag(t, style_key, text):
-        return f'<{t} style="{css[style_key]}">{text}</{t}>'
 
-    def p(text):
-        return tag('p', 'p', text) if text.strip() else ''
+def to_wechat_docx(data, output_path):
+    """生成公众号 .docx 文件 — 可直接导入公众号后台"""
+    from docx import Document
+    from docx.shared import Pt, Inches, Cm, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
 
-    body = []
+    doc = Document()
 
-    body.append(tag('h1', 'h1', data['title']))
+    # 页面设置
+    section = doc.sections[0]
+    section.page_width = Cm(17)
+    section.page_height = Cm(24)
+    section.left_margin = Cm(1.5)
+    section.right_margin = Cm(1.5)
 
+    # 颜色
+    DARK = RGBColor(0x2C, 0x3E, 0x50)
+    BLUE = RGBColor(0x34, 0x98, 0xDB)
+    GRAY = RGBColor(0x66, 0x66, 0x66)
+    BODY = RGBColor(0x33, 0x33, 0x33)
+    LIGHT_GRAY = RGBColor(0x99, 0x99, 0x99)
+
+    def add_h1(text):
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.space_after = Pt(12)
+        run = p.add_run(text)
+        run.bold = True
+        run.font.size = Pt(20)
+        run.font.color.rgb = DARK
+
+    def add_h2(text):
+        p = doc.add_paragraph()
+        p.space_before = Pt(20)
+        p.space_after = Pt(8)
+        run = p.add_run(text)
+        run.bold = True
+        run.font.size = Pt(15)
+        run.font.color.rgb = DARK
+
+    def add_body(text):
+        if not text.strip():
+            return
+        p = doc.add_paragraph()
+        p.space_after = Pt(6)
+        run = p.add_run(text)
+        run.font.size = Pt(11)
+        run.font.color.rgb = BODY
+        p.paragraph_format.line_spacing = 1.8
+
+    def add_quote(text):
+        p = doc.add_paragraph()
+        p.space_after = Pt(8)
+        p.paragraph_format.left_indent = Cm(0.8)
+        run = p.add_run(text)
+        run.font.size = Pt(10)
+        run.font.color.rgb = GRAY
+        run.italic = True
+
+    def add_divider():
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.space_before = Pt(12)
+        p.space_after = Pt(12)
+        run = p.add_run('· · ·')
+        run.font.size = Pt(10)
+        run.font.color.rgb = LIGHT_GRAY
+
+    def add_ref(text):
+        p = doc.add_paragraph()
+        p.space_before = Pt(16)
+        run = p.add_run(text)
+        run.font.size = Pt(9)
+        run.font.color.rgb = LIGHT_GRAY
+
+    # 标题
+    add_h1(data['title'])
+
+    # 亮点
     oneliner = clean_md(data['oneliner'])
     oneliner = re.sub(r'^.{0,6}亮点[：:]\s*', '', oneliner)
-    body.append(tag('blockquote', 'quote', oneliner))
-    body.append(tag('p', 'divider', '· · ·'))
+    add_quote(oneliner)
+    add_divider()
 
-    body.append(tag('h2', 'h2', '🎯 我们在问什么问题'))
+    # 各节
+    add_h2('🎯 我们在问什么问题')
     for line in data['problem'].strip().split('\n'):
-        line = line.strip()
-        if not line:
-            continue
-        line = clean_md(line)
-        body.append(p(line))
+        line = clean_md(line.strip())
+        if line:
+            add_body(line)
 
-    body.append(tag('h2', 'h2', '🔬 方法概要'))
+    add_h2('🔬 方法概要')
     for line in data['method'].strip().split('\n'):
-        line = line.strip()
-        if not line:
-            continue
-        line = clean_md(line)
-        if line.startswith('- ') or line.startswith('* '):
-            body.append(tag('p', 'list', '  ' + line))
-        else:
-            body.append(p(line))
+        line = clean_md(line.strip())
+        if line:
+            add_body(line)
 
-    body.append(tag('h2', 'h2', '📊 关键数据'))
+    add_h2('📊 关键数据')
     results = data['results']
+    # 表格 → docx 表格
     table_rows = re.findall(r'\|\s*(.+?)\s*\|\s*(.+?)\s*\|', results)
     if table_rows:
         data_rows = [r for r in table_rows if not re.match(r'[-:\s|]+', r[0]) and '发现' not in r[0]]
-        body.append(f'<table style="{css["table"]}">')
-        body.append(f'<tr><th style="{css["th"]}">发现</th><th style="{css["th"]}">数据</th></tr>')
-        for desc, val in data_rows:
-            body.append(f'<tr><td style="{css["td"]}">{desc.strip()}</td><td style="{css["td"]}">{val.strip()}</td></tr>')
-        body.append('</table>')
+        table = doc.add_table(rows=1 + len(data_rows), cols=2)
+        table.style = 'Light Grid Accent 1'
+        # 表头
+        hdr = table.rows[0].cells
+        hdr[0].text = '发现'
+        hdr[1].text = '数据'
+        for cell in hdr:
+            for p in cell.paragraphs:
+                for run in p.runs:
+                    run.bold = True
+                    run.font.size = Pt(10)
+        # 数据行
+        for i, (desc, val) in enumerate(data_rows):
+            row = table.rows[i + 1].cells
+            row[0].text = desc.strip()
+            row[1].text = val.strip()
+            for cell in row:
+                for p in cell.paragraphs:
+                    for run in p.runs:
+                        run.font.size = Pt(10)
+    # 表格后文本
     for line in results.strip().split('\n'):
-        if '|' in line and '-' in line:
-            continue
         line = clean_md(line.strip())
         if line and '|' not in line:
-            body.append(p(line))
+            add_body(line)
 
-    body.append(tag('h2', 'h2', '💡 读后感和碎碎念'))
+    add_h2('💡 读后感和碎碎念')
     for line in data['insight'].strip().split('\n'):
-        line = line.strip()
-        if not line:
-            continue
-        line = clean_md(line)
-        if line.startswith('**') and '**' in line[2:]:
-            bold_end = line.index('**', 2)
-            bold_text = line[2:bold_end]
-            rest = line[bold_end+2:].strip()
-            body.append(tag('p', 'p', f'<strong style="color:#2c3e50;">{bold_text}</strong> {rest}'))
-        else:
-            body.append(p(line))
+        line = clean_md(line.strip())
+        if line:
+            add_body(line)
 
-    body.append(tag('p', 'divider', '· · ·'))
-    ref_text = f'📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:2601.06112, Jan 2026.<br>完整分析 & 论文原文：github.com/yanxi1024-git/ai-paper-daily'
-    body.append(tag('p', 'ref', ref_text))
-    body.append(tag('p', 'p', '<span style="color:#3498db;">#和Andrew一起读论文</span>  <span style="color:#999;">#AI论文解读</span>  <span style="color:#999;">#AI可靠性</span>'))
+    add_divider()
+    url = data.get('arxiv_url', '')
+    add_ref(f'Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:2601.06112, Jan 2026.\n完整分析 & 论文原文：github.com/yanxi1024-git/ai-paper-daily')
 
-    body_html = '\n'.join(body)
-
-    # 包装成一个自包含页面，带一键复制按钮
-    return f'''<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{data['title']}</title>
-<style>
-body {{ font-family: -apple-system,"PingFang SC","Microsoft YaHei",sans-serif; max-width:680px; margin:0 auto; padding:20px; }}
-.toolbar {{ position:sticky; top:0; background:#fff; padding:12px 0; border-bottom:1px solid #eee; margin-bottom:20px; z-index:10; }}
-.btn {{ display:inline-block; padding:10px 24px; background:#2c3e50; color:#fff; border:none; border-radius:6px; font-size:15px; cursor:pointer; margin-right:10px; }}
-.btn:hover {{ background:#3498db; }}
-.msg {{ display:inline-block; margin-left:12px; font-size:14px; color:#27ae60; opacity:0; transition:opacity 0.3s; }}
-.msg.show {{ opacity:1; }}
-</style>
-</head>
-<body>
-<div class="toolbar">
-  <button class="btn" onclick="copyToWechat()">📋 一键复制到公众号</button>
-  <span class="msg" id="msg">✅ 已复制！去公众号后台 Ctrl+V 粘贴</span>
-</div>
-<div id="content">
-{body_html}
-</div>
-<script>
-function copyToWechat() {{
-  const content = document.getElementById('content');
-  const range = document.createRange();
-  range.selectNodeContents(content);
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-  document.execCommand('copy');
-  sel.removeAllRanges();
-  const msg = document.getElementById('msg');
-  msg.classList.add('show');
-  setTimeout(() => msg.classList.remove('show'), 3000);
-}}
-</script>
-</body>
-</html>'''
+    doc.save(output_path)
+    return output_path
 
 
 # ── 主流程 ───────────────────────────────────────────────────
@@ -389,17 +429,19 @@ def main():
     # 生成各平台版本
     x_content = to_x_long(data)
     mol_content = to_moltbook(data)
-    wc_content = to_wechat(data)
+    wc_md = to_wechat(data)
 
-    # 写入文件
     (x_dir / f'{stem}.txt').write_text(x_content)
     (mol_dir / f'{stem}.txt').write_text(mol_content)
-    (wc_dir / f'{stem}.html').write_text(wc_content)
+    (wc_dir / f'{stem}.md').write_text(wc_md)
+    docx_path = str(wc_dir / f'{stem}.docx')
+    to_wechat_docx(data, docx_path)
 
     print(f"✅ 已生成多平台版本：")
     print(f"   X 长文:      output/x/{stem}.txt")
     print(f"   Moltbook:    output/moltbook/{stem}.txt")
-    print(f"   公众号:       output/wechat/{stem}.html")
+    print(f"   公众号 MD:    output/wechat/{stem}.md")
+    print(f"   公众号 DOCX:  output/wechat/{stem}.docx")
 
 
 if __name__ == '__main__':
