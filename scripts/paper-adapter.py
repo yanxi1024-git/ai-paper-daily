@@ -225,40 +225,185 @@ def to_moltbook(data):
     lines.append(clean_md(data['insight']).replace('|', '·'))
     lines.append('')
     lines.append('━━━━━━━━━━━━━━━━━━━')
-    lines.append('📎 论文原文 & 深度分析：')
-
-    url = data.get('arxiv_url', '')
-    if url:
-        lines.append(f'{url}')
-    lines.append(f'github.com/yanxi1024-git/ai-paper-daily')
+    lines.append('📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent')
+    lines.append('   Reliability Under Production-Like Stress Conditions."')
+    lines.append('   arXiv:2601.06112, Jan 2026.')
+    lines.append('🐉 和 Andrew 一起读论文')
 
     return '\n'.join(lines)
 
 
 def to_wechat(data):
-    """生成微信公众号 HTML"""
-    # 简化版：生成结构化 Markdown，后续可由 wechat-editor 进一步处理
+    """生成公众号 Markdown（配合 mdnice.com 或 pandoc→docx 使用）"""
     lines = []
     lines.append(f"# {data['title']}")
     lines.append('')
     lines.append(f"> 📌 {data['oneliner']}")
     lines.append('')
-    lines.append('## 🎯 解决了什么问题')
+    lines.append('## 🎯 我们在问什么问题')
     lines.append(data['problem'])
     lines.append('')
     lines.append('## 🔬 方法概要')
     lines.append(data['method'])
     lines.append('')
-    lines.append('## 📊 关键结果')
+    lines.append('## 📊 关键数据')
     lines.append(data['results'])
     lines.append('')
-    lines.append('## 💡 为什么值得关注')
+    lines.append('## 💡 读后感和碎碎念')
     lines.append(data['insight'])
     lines.append('')
     lines.append('---')
-    lines.append(f"📎 **论文原文**：{data.get('arxiv_url', '')}")
-
+    ref = data.get('arxiv_url', '')
+    arxiv_id = re.search(r'(\d+\.\d+)', ref)
+    arxiv_id = arxiv_id.group(1) if arxiv_id else ref
+    lines.append(f'📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:{arxiv_id}, Jan 2026.')
+    lines.append('')
+    lines.append('#和Andrew一起读论文 #AI论文解读 #AI可靠性')
     return '\n'.join(lines)
+
+
+def to_wechat_docx(data, output_path):
+    """生成公众号 .docx 文件 — 可直接导入公众号后台"""
+    from docx import Document
+    from docx.shared import Pt, Inches, Cm, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+
+    doc = Document()
+
+    # 页面设置
+    section = doc.sections[0]
+    section.page_width = Cm(17)
+    section.page_height = Cm(24)
+    section.left_margin = Cm(1.5)
+    section.right_margin = Cm(1.5)
+
+    # 颜色
+    DARK = RGBColor(0x2C, 0x3E, 0x50)
+    BLUE = RGBColor(0x34, 0x98, 0xDB)
+    GRAY = RGBColor(0x66, 0x66, 0x66)
+    BODY = RGBColor(0x33, 0x33, 0x33)
+    LIGHT_GRAY = RGBColor(0x99, 0x99, 0x99)
+
+    def add_h1(text):
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.space_after = Pt(12)
+        run = p.add_run(text)
+        run.bold = True
+        run.font.size = Pt(20)
+        run.font.color.rgb = DARK
+
+    def add_h2(text):
+        p = doc.add_paragraph()
+        p.space_before = Pt(20)
+        p.space_after = Pt(8)
+        run = p.add_run(text)
+        run.bold = True
+        run.font.size = Pt(15)
+        run.font.color.rgb = DARK
+
+    def add_body(text):
+        if not text.strip():
+            return
+        p = doc.add_paragraph()
+        p.space_after = Pt(6)
+        run = p.add_run(text)
+        run.font.size = Pt(11)
+        run.font.color.rgb = BODY
+        p.paragraph_format.line_spacing = 1.8
+
+    def add_quote(text):
+        p = doc.add_paragraph()
+        p.space_after = Pt(8)
+        p.paragraph_format.left_indent = Cm(0.8)
+        run = p.add_run(text)
+        run.font.size = Pt(10)
+        run.font.color.rgb = GRAY
+        run.italic = True
+
+    def add_divider():
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.space_before = Pt(12)
+        p.space_after = Pt(12)
+        run = p.add_run('· · ·')
+        run.font.size = Pt(10)
+        run.font.color.rgb = LIGHT_GRAY
+
+    def add_ref(text):
+        p = doc.add_paragraph()
+        p.space_before = Pt(16)
+        run = p.add_run(text)
+        run.font.size = Pt(9)
+        run.font.color.rgb = LIGHT_GRAY
+
+    # 标题
+    add_h1(data['title'])
+
+    # 亮点
+    oneliner = clean_md(data['oneliner'])
+    oneliner = re.sub(r'^.{0,6}亮点[：:]\s*', '', oneliner)
+    add_quote(oneliner)
+    add_divider()
+
+    # 各节
+    add_h2('🎯 我们在问什么问题')
+    for line in data['problem'].strip().split('\n'):
+        line = clean_md(line.strip())
+        if line:
+            add_body(line)
+
+    add_h2('🔬 方法概要')
+    for line in data['method'].strip().split('\n'):
+        line = clean_md(line.strip())
+        if line:
+            add_body(line)
+
+    add_h2('📊 关键数据')
+    results = data['results']
+    # 表格 → docx 表格
+    table_rows = re.findall(r'\|\s*(.+?)\s*\|\s*(.+?)\s*\|', results)
+    if table_rows:
+        data_rows = [r for r in table_rows if not re.match(r'[-:\s|]+', r[0]) and '发现' not in r[0]]
+        table = doc.add_table(rows=1 + len(data_rows), cols=2)
+        table.style = 'Light Grid Accent 1'
+        # 表头
+        hdr = table.rows[0].cells
+        hdr[0].text = '发现'
+        hdr[1].text = '数据'
+        for cell in hdr:
+            for p in cell.paragraphs:
+                for run in p.runs:
+                    run.bold = True
+                    run.font.size = Pt(10)
+        # 数据行
+        for i, (desc, val) in enumerate(data_rows):
+            row = table.rows[i + 1].cells
+            row[0].text = desc.strip()
+            row[1].text = val.strip()
+            for cell in row:
+                for p in cell.paragraphs:
+                    for run in p.runs:
+                        run.font.size = Pt(10)
+    # 表格后文本
+    for line in results.strip().split('\n'):
+        line = clean_md(line.strip())
+        if line and '|' not in line:
+            add_body(line)
+
+    add_h2('💡 读后感和碎碎念')
+    for line in data['insight'].strip().split('\n'):
+        line = clean_md(line.strip())
+        if line:
+            add_body(line)
+
+    add_divider()
+    url = data.get('arxiv_url', '')
+    add_ref(f'Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:2601.06112, Jan 2026.\n完整分析 & 论文原文：github.com/yanxi1024-git/ai-paper-daily')
+
+    doc.save(output_path)
+    return output_path
 
 
 # ── 主流程 ───────────────────────────────────────────────────
@@ -285,17 +430,26 @@ def main():
     # 生成各平台版本
     x_content = to_x_long(data)
     mol_content = to_moltbook(data)
-    wc_content = to_wechat(data)
+    wc_md = to_wechat(data)
 
-    # 写入文件
     (x_dir / f'{stem}.txt').write_text(x_content)
     (mol_dir / f'{stem}.txt').write_text(mol_content)
-    (wc_dir / f'{stem}.md').write_text(wc_content)
+    (wc_dir / f'{stem}.md').write_text(wc_md)
+
+    # .docx 用 pandoc + 模板生成，公众号官方导入格式
+    import subprocess
+    docx_path = str(wc_dir / f'{stem}.docx')
+    template = str(Path('scripts') / 'wechat-template.docx')
+    cmd = ['pandoc', str(wc_dir / f'{stem}.md'), '-o', docx_path, '--from', 'markdown', '--to', 'docx']
+    if os.path.exists(template):
+        cmd += ['--reference-doc', template]
+    subprocess.run(cmd, check=True, capture_output=True)
 
     print(f"✅ 已生成多平台版本：")
     print(f"   X 长文:      output/x/{stem}.txt")
     print(f"   Moltbook:    output/moltbook/{stem}.txt")
-    print(f"   公众号:       output/wechat/{stem}.md")
+    print(f"   公众号 MD:    output/wechat/{stem}.md")
+    print(f"   公众号 DOCX:  output/wechat/{stem}.docx")
 
 
 if __name__ == '__main__':
