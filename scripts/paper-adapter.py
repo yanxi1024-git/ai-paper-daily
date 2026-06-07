@@ -94,6 +94,15 @@ def parse_markdown(filepath):
         result['arxiv_url'] = f"https://arxiv.org/abs/{m.group(1)}"
         result['paper_info']['arxiv_id'] = m.group(1)
 
+    # 从底部 --- 后提取论文引用信息
+    bottom = content.split('---')[-1] if '---' in content else ''
+    ref_lines = []
+    for line in bottom.strip().split('\n'):
+        line = line.strip()
+        if line.startswith('📎') or line.startswith('arXiv:') or (line and not line.startswith('#') and not line.startswith('🐉')):
+            ref_lines.append(line)
+    result['paper_info']['citation'] = '\n'.join(ref_lines) if ref_lines else ''
+
     # 日期
     m = re.search(r'(\d{4}-\d{2}-\d{2})', str(filepath))
     if m:
@@ -183,12 +192,16 @@ def to_x_long(data):
     lines.append('')
     lines.append('—' * 20)
     lines.append('')
-    lines.append('#和Andrew一起读论文  #AI论文解读  #AI可靠性')
+    lines.append('#和Andrew一起读论文  #AI论文解读  #Agent记忆')
     lines.append('')
-    # 参考文献格式，不含外部链接
-    lines.append('📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent')
-    lines.append('   Reliability Under Production-Like Stress Conditions."')
-    lines.append('   arXiv:2601.06112, Jan 2026.')
+    # 使用解析出的论文引用信息
+    citation = data['paper_info'].get('citation', '')
+    if citation:
+        for line in citation.split('\n'):
+            lines.append(line)
+    else:
+        arxiv_id = data['paper_info'].get('arxiv_id', '')
+        lines.append(f'📎 arXiv:{arxiv_id}')
     lines.append('🐉 和 Andrew 一起读论文')
 
     return '\n'.join(lines)
@@ -225,9 +238,13 @@ def to_moltbook(data):
     lines.append(clean_md(data['insight']).replace('|', '·'))
     lines.append('')
     lines.append('━━━━━━━━━━━━━━━━━━━')
-    lines.append('📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent')
-    lines.append('   Reliability Under Production-Like Stress Conditions."')
-    lines.append('   arXiv:2601.06112, Jan 2026.')
+    citation = data['paper_info'].get('citation', '')
+    if citation:
+        for line in citation.split('\n'):
+            lines.append(line)
+    else:
+        arxiv_id = data['paper_info'].get('arxiv_id', '')
+        lines.append(f'📎 arXiv:{arxiv_id}')
     lines.append('🐉 和 Andrew 一起读论文')
 
     return '\n'.join(lines)
@@ -253,12 +270,16 @@ def to_wechat(data):
     lines.append(data['insight'])
     lines.append('')
     lines.append('---')
-    ref = data.get('arxiv_url', '')
-    arxiv_id = re.search(r'(\d+\.\d+)', ref)
-    arxiv_id = arxiv_id.group(1) if arxiv_id else ref
-    lines.append(f'📎 Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:{arxiv_id}, Jan 2026.')
+    citation = data['paper_info'].get('citation', '')
+    if citation:
+        lines.append(citation)
+    else:
+        ref = data.get('arxiv_url', '')
+        arxiv_id = re.search(r'(\d+\.\d+)', ref)
+        arxiv_id = arxiv_id.group(1) if arxiv_id else ref
+        lines.append(f'📎 arXiv:{arxiv_id}')
     lines.append('')
-    lines.append('#和Andrew一起读论文 #AI论文解读 #AI可靠性')
+    lines.append('#和Andrew一起读论文 #AI论文解读 #Agent记忆')
     return '\n'.join(lines)
 
 
@@ -400,7 +421,11 @@ def to_wechat_docx(data, output_path):
 
     add_divider()
     url = data.get('arxiv_url', '')
-    add_ref(f'Aayush Gupta et al. "ReliabilityBench: Evaluating LLM Agent Reliability Under Production-Like Stress Conditions." arXiv:2601.06112, Jan 2026.\n完整分析 & 论文原文：github.com/yanxi1024-git/ai-paper-daily')
+    citation = data['paper_info'].get('citation', '')
+    if citation:
+        add_ref(citation)
+    else:
+        add_ref(f'完整分析 & 论文原文：github.com/yanxi1024-git/ai-paper-daily')
 
     doc.save(output_path)
     return output_path
